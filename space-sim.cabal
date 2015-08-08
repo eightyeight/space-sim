@@ -42,9 +42,6 @@ executable game
   ghc-options:
                     -Wall -O2
 
-  default-extensions:
-                    NoImplicitPrelude
-
 library
   default-language:
                     Haskell2010

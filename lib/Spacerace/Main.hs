@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Spacerace.Main (
-  main
+  run
+, Config (..)
 , module S
 ) where
 
@@ -18,16 +19,30 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
 import Control.Monad
 
-main :: IO ()
-main = runZMQ $ do
-    lobby <- socket Req
-    connect lobby "tcp://192.168.1.192:5558"
-    state <- socket Sub
-    connect state "tcp://192.168.1.192:5556"
-    control <- socket Push
-    connect state "tcp://192.168.1.192:5557"
-    forever $ joinAndPlay lobby state control
+data Config =
+  Config
+    String -- host
+    Int -- request port
+    Int -- sub port
+    Int -- push port
+    FilePath -- maps
+  deriving (Eq, Show)
 
+run :: Config -> IO ()
+run (Config host lobbyPort statePort controlPort mapDir) = runZMQ $ do
+    let connString p = "tcp://" ++ host ++ ":" ++ show p
+    lobbyS <- makeSocket Req (connString lobbyPort)
+    stateS <- makeSocket Sub (connString statePort)
+    controlS <- makeSocket Push (connString controlPort)
+    forever $ joinAndPlay lobbyS stateS controlS
+
+makeSocket :: SocketType t => t -> String -> ZMQ z (Socket z t)
+makeSocket socketType connString = do
+    sock <- socket socketType
+    connect sock connString
+    return sock
+
+joinAndPlay :: Socket z Req -> Socket z Sub -> Socket z Push -> ZMQ z ()
 joinAndPlay lobbyS stateS controlS = do
     send lobbyS [] (pack S.teamInfo)
     reply <- receive lobbyS
@@ -42,12 +57,14 @@ joinAndPlay lobbyS stateS controlS = do
             waitForGame (pack gameName) stateS
             gameLoop secret mapData stateS controlS
 
+waitForGame :: B.ByteString -> Socket z Sub -> ZMQ z ()
 waitForGame gameName stateS = do
     [game, _state] <- receiveMulti stateS
     if gameName /= game
         then waitForGame gameName stateS
         else return ()
 
+gameLoop :: String -> SpaceMap Double -> Socket z Sub -> Socket z Push -> ZMQ z ()
 gameLoop secret mapData stateS controlS = do
     liftIO $ print "hi"
     state <- getCurrentState stateS
@@ -59,12 +76,14 @@ gameLoop secret mapData stateS controlS = do
             send controlS [] (pack command)
             gameLoop secret mapData stateS controlS
 
+getCurrentState :: Socket z Sub -> ZMQ z GameState
 getCurrentState stateS = do
     [_gameName, state] <- receiveMulti stateS
     case decode (L.fromChunks [state]) of
         Just s -> return s
         Nothing -> error "could not parse game state"
 
+getCommand :: String -> SpaceMap Double -> [Ship] -> Control
 getCommand secret mapData ships = Control secret MainEngineOn None
 
 controlexample ::
