@@ -4,12 +4,11 @@
 
 module Spacerace.State where
 
-import Prelude
-
-import Data.Aeson
 import Control.Monad (mzero)
-import Text.RawString.QQ
+import Data.Aeson
 import qualified Data.ByteString.Lazy as L
+import Prelude
+import Text.RawString.QQ
 
 data Ship =
   Ship {

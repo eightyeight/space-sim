@@ -2,8 +2,8 @@ module Spacerace.Map where
 
 import Control.Applicative
 import qualified Data.Vector as V
-import System.FilePath.Posix ((</>))
 import Prelude
+import System.FilePath.Posix ((</>))
 
 data Flow a = Flow a a
   deriving (Show)

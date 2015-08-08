@@ -12,15 +12,15 @@ module Spacerace.Lobby(
 , AsSecret(..)
 ) where
 
-import Control.Category(Category(id))
-import Control.Lens(Optic', lens)
-import Data.Eq(Eq)
-import Data.Functor(Functor)
-import Data.String(String)
-import Data.Typeable(Typeable)
-import Data.Aeson(FromJSON)
-import GHC.Generics(Generic)
-import Prelude(Show)
+import Control.Category (Category(id))
+import Control.Lens (Optic', lens)
+import Data.Eq (Eq)
+import Data.Functor (Functor)
+import Data.String (String)
+import Data.Typeable (Typeable)
+import Data.Aeson (FromJSON)
+import GHC.Generics (Generic)
+import Prelude (Show)
 
 teamInfo ::
   String

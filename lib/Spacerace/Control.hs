@@ -1,8 +1,8 @@
 module Spacerace.Control where
 
+import Data.ByteString.Char8 (pack)
 import Prelude
 import System.ZMQ4.Monadic
-import Data.ByteString.Char8(pack)
 
 data Control =
   Control

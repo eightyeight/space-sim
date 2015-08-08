@@ -5,18 +5,17 @@ module Spacerace.Main (
 , module S
 ) where
 
-import Spacerace.Control as S
-import Spacerace.Map as S
-import Spacerace.State as S
-import Spacerace.Lobby as S
-import Spacerace.State as S
-import Prelude
-import System.ZMQ4.Monadic
-import Data.ByteString.Char8(pack)
+import Control.Monad
 import Data.Aeson
+import Data.ByteString.Char8 (pack)
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
-import Control.Monad
+import Prelude
+import Spacerace.Control as S
+import Spacerace.Lobby as S
+import Spacerace.Map as S
+import Spacerace.State as S
+import System.ZMQ4.Monadic
 
 main :: IO ()
 main = runZMQ $ do
