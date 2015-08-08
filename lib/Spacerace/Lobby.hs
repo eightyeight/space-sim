@@ -1,28 +1,30 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Spacerace.Lobby (
-  teamInfo
-, LobbyResponse(..)
+  LobbyRequest (..)
+, LobbyResponse (..)
 ) where
 
 import Data.Eq (Eq)
 import Data.String (String)
 import Data.Typeable (Typeable)
-import Data.Aeson (FromJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Prelude (Show)
 
-teamInfo ::
-  String
-teamInfo =
-  "{ \"name\": \"tony\", \"team\": \"=<<\" }"
+data LobbyRequest =
+  LobbyRequest {
+    name :: String
+  , team :: String
+  } deriving (Eq, Show, Generic, Typeable)
 
 data LobbyResponse =
   LobbyResponse {
-    name :: String
+    _name :: String -- conflicts with 'name' above :(
   , game :: String
   , map :: String
   , secret :: String
   } deriving (Eq, Show, Generic, Typeable)
 
+instance ToJSON LobbyRequest
 instance FromJSON LobbyResponse

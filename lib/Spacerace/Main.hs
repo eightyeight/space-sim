@@ -21,19 +21,23 @@ import System.ZMQ4.Monadic
 data Config =
   Config
     String -- host
-    Int -- request port
-    Int -- sub port
-    Int -- push port
+    Int -- lobby port
+    Int -- control port
+    Int -- state port
     FilePath -- maps
   deriving (Eq, Show)
 
+type LobbySocket z = Socket z Req
+type ControlSocket z = Socket z Push
+type StateSocket z = Socket z Sub
+
 run :: Config -> IO ()
-run (Config host lobbyPort statePort controlPort mapDir) = runZMQ $ do
+run (Config host lobbyPort controlPort statePort mapDir) = runZMQ $ do
     let connString p = "tcp://" ++ host ++ ":" ++ show p
     lobbyS <- makeSocket Req (connString lobbyPort)
     stateS <- makeSocket Sub (connString statePort)
     controlS <- makeSocket Push (connString controlPort)
-    forever $ joinAndPlay lobbyS stateS controlS
+    forever $ joinAndPlay lobbyS stateS controlS mapDir
 
 makeSocket :: SocketType t => t -> String -> ZMQ z (Socket z t)
 makeSocket socketType connString = do
@@ -41,29 +45,27 @@ makeSocket socketType connString = do
     connect sock connString
     return sock
 
-joinAndPlay :: Socket z Req -> Socket z Sub -> Socket z Push -> ZMQ z ()
-joinAndPlay lobbyS stateS controlS = do
-    send lobbyS [] (pack S.teamInfo)
+joinAndPlay :: LobbySocket z -> StateSocket z -> ControlSocket z -> FilePath -> ZMQ z ()
+joinAndPlay lobbyS stateS controlS mapDir = do
+    send lobbyS [] (L.toStrict $ encode $ LobbyRequest "=<< 1" "team haskell")
     reply <- receive lobbyS
-    let lobbyResponse = decode (L.fromChunks [reply]) :: Maybe LobbyResponse
+    let lobbyResponse = decodeStrict reply :: Maybe LobbyResponse
     liftIO . print $ lobbyResponse    
     case lobbyResponse of 
         Nothing -> error "no/incorrect response from lobby"
-        Just (LobbyResponse _ gameName map secret) -> do
-            -- load map
-            mapData <- liftIO $ loadMap "/home/tmorris/Desktop/r/spacerace/maps" "swish"
-            -- Wait for the game to begin
+        Just (LobbyResponse _ gameName mapName secret) -> do
+            mapData <- liftIO $ loadMap mapDir mapName
             waitForGame (pack gameName) stateS
             gameLoop secret mapData stateS controlS
 
-waitForGame :: B.ByteString -> Socket z Sub -> ZMQ z ()
+waitForGame :: B.ByteString -> StateSocket z -> ZMQ z ()
 waitForGame gameName stateS = do
     [game, _state] <- receiveMulti stateS
     if gameName /= game
         then waitForGame gameName stateS
         else return ()
 
-gameLoop :: String -> SpaceMap Double -> Socket z Sub -> Socket z Push -> ZMQ z ()
+gameLoop :: String -> SpaceMap Double -> StateSocket z -> ControlSocket z -> ZMQ z ()
 gameLoop secret mapData stateS controlS = do
     liftIO $ print "hi"
     state <- getCurrentState stateS
@@ -75,7 +77,7 @@ gameLoop secret mapData stateS controlS = do
             send controlS [] (pack command)
             gameLoop secret mapData stateS controlS
 
-getCurrentState :: Socket z Sub -> ZMQ z GameState
+getCurrentState :: StateSocket z -> ZMQ z GameState
 getCurrentState stateS = do
     [_gameName, state] <- receiveMulti stateS
     case decode (L.fromChunks [state]) of
