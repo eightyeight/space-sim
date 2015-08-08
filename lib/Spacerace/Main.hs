@@ -53,28 +53,27 @@ joinAndPlay lobbyS stateS controlS mapDir = do
     liftIO . print $ lobbyResponse    
     case lobbyResponse of 
         Nothing -> error "no/incorrect response from lobby"
-        Just (LobbyResponse _ gameName mapName secret) -> do
+        Just (LobbyResponse _ gameName mapName token) -> do
             mapData <- liftIO $ loadMap mapDir mapName
             waitForGame (pack gameName) stateS
-            gameLoop secret mapData stateS controlS
+            gameLoop (Secret token) mapData stateS controlS
 
 waitForGame :: B.ByteString -> StateSocket z -> ZMQ z ()
 waitForGame gameName stateS = do
-    [game, _state] <- receiveMulti stateS
-    if gameName /= game
+    [gameN, _] <- receiveMulti stateS
+    if gameN /= gameName
         then waitForGame gameName stateS
         else return ()
 
-gameLoop :: String -> SpaceMap Double -> StateSocket z -> ControlSocket z -> ZMQ z ()
-gameLoop secret mapData stateS controlS = do
+gameLoop :: Secret -> SpaceMap Double -> StateSocket z -> ControlSocket z -> ZMQ z ()
+gameLoop token mapData stateS controlS = do
     state <- getCurrentState stateS
     case state of
         FinishedState -> return ()
         RunningState ships -> do
-            let command = toProtocol $ getCommand secret mapData ships
-            liftIO $ print command
-            send controlS [] (pack command)
-            gameLoop secret mapData stateS controlS
+            let command = getCommand mapData ships
+            sendCommand controlS token command
+            gameLoop token mapData stateS controlS
 
 getCurrentState :: StateSocket z -> ZMQ z GameState
 getCurrentState stateS = do
@@ -83,5 +82,8 @@ getCurrentState stateS = do
         Just s -> return s
         Nothing -> error "could not parse game state"
 
-getCommand :: String -> SpaceMap Double -> [Ship] -> Control
-getCommand secret _mapData _ships = Control secret MainEngineOn None
+getCommand :: SpaceMap Double -> [Ship] -> Control
+getCommand _mapData _ships = Control MainEngineOn None
+
+sendCommand :: ToProtocol a => ControlSocket z -> Secret -> a -> ZMQ z ()
+sendCommand sock s p = send sock [] (pack $ toProtocol (s, p))
