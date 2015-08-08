@@ -67,7 +67,6 @@ waitForGame gameName stateS = do
 
 gameLoop :: String -> SpaceMap Double -> StateSocket z -> ControlSocket z -> ZMQ z ()
 gameLoop secret mapData stateS controlS = do
-    liftIO $ print "hi"
     state <- getCurrentState stateS
     case state of
         FinishedState -> return ()
@@ -85,10 +84,4 @@ getCurrentState stateS = do
         Nothing -> error "could not parse game state"
 
 getCommand :: String -> SpaceMap Double -> [Ship] -> Control
-getCommand secret mapData ships = Control secret MainEngineOn None
-
-controlexample ::
-  String
-  -> Control
-controlexample k =
-  Control k MainEngineOn AntiClock
+getCommand secret _mapData _ships = Control secret MainEngineOn None
